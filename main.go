@@ -52,7 +52,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer file.Close()
 
-	newFilePath := UPLOAD_DIR + "/" + fileHeader.Filename
+	newFilePath := getUploadFilePath(fileHeader.Filename)
 	newFile, err := os.Create(newFilePath)
 
 	if err != nil {
@@ -89,7 +89,7 @@ func downloadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filePath := UPLOAD_DIR + "/" + filename
+	filePath := getUploadFilePath(filename)
 
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -120,4 +120,8 @@ func downloadHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unable to send file", http.StatusInternalServerError)
 		return
 	}
+}
+
+func getUploadFilePath(filename string) string {
+	return filepath.Join(UPLOAD_DIR, filename)
 }
