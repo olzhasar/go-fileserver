@@ -9,27 +9,10 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"time"
 )
 
 const PORT = "8080"
 const UPLOAD_DIR = "uploads"
-
-type LoggingMiddleware struct {
-	handler http.Handler
-}
-
-func (l *LoggingMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	start := time.Now()
-
-	l.handler.ServeHTTP(w, r)
-
-	log.Printf("%s %s DURATION: %v", r.Method, r.URL, time.Since(start))
-}
-
-func MakeLoggedHandler(handler http.Handler) *LoggingMiddleware {
-	return &LoggingMiddleware{handler}
-}
 
 func checkUploadDir() {
 	err := os.MkdirAll(UPLOAD_DIR, 0755)
