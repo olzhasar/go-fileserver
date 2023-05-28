@@ -9,10 +9,27 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"time"
 )
 
-const port = "8080"
+const PORT = "8080"
 const UPLOAD_DIR = "uploads"
+
+type LoggingMiddleware struct {
+	handler http.Handler
+}
+
+func (l *LoggingMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+
+	l.handler.ServeHTTP(w, r)
+
+	log.Printf("%s %s DURATION: %v", r.Method, r.URL, time.Since(start))
+}
+
+func MakeLoggedHandler(handler http.Handler) *LoggingMiddleware {
+	return &LoggingMiddleware{handler}
+}
 
 func checkUploadDir() {
 	err := os.MkdirAll(UPLOAD_DIR, 0755)
@@ -24,12 +41,16 @@ func checkUploadDir() {
 func main() {
 	checkUploadDir()
 
-	http.HandleFunc("/upload", uploadHandler)
-	http.HandleFunc("/download", downloadHandler)
-	http.HandleFunc("/", rootHandler)
+	mux := http.NewServeMux()
 
-	fmt.Printf("Starting server on port %s...\n", port)
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+	mux.HandleFunc("/upload", uploadHandler)
+	mux.HandleFunc("/download", downloadHandler)
+	mux.HandleFunc("/", rootHandler)
+
+	loggedMux := MakeLoggedHandler(mux)
+
+	log.Printf("Starting server on port %s...\n", PORT)
+	log.Fatal(http.ListenAndServe(":"+PORT, loggedMux))
 }
 
 func rootHandler(w http.ResponseWriter, r *http.Request) {
