@@ -1,3 +1,3 @@
-module github.com/olzhasar/file-server
+module github.com/olzhasar/go-fileserver
 
 go 1.18
