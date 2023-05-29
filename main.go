@@ -12,7 +12,6 @@ import (
 )
 
 const PORT = "8080"
-const UPLOAD_DIR = "uploads"
 
 func checkUploadDir() {
 	err := os.MkdirAll(UPLOAD_DIR, 0755)
@@ -54,26 +53,10 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	defer file.Close()
-
-	newFilePath := getUploadFilePath(fileHeader.Filename)
-	newFile, err := os.Create(newFilePath)
-
-	if err != nil {
-		http.Error(w, "Unable to create destination file", http.StatusInternalServerError)
+	if err := saveFile(fileHeader.Filename, &file); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	defer newFile.Close()
-
-	_, err = io.Copy(newFile, file)
-	if err != nil {
-		http.Error(w, "Unable to save uploaded file", http.StatusInternalServerError)
-		return
-	}
-
-	filename := fileHeader.Filename
-	fmt.Printf("Filename %s\n", filename)
 
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, "File uploaded successfully")
@@ -124,8 +107,4 @@ func downloadHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unable to send file", http.StatusInternalServerError)
 		return
 	}
-}
-
-func getUploadFilePath(filename string) string {
-	return filepath.Join(UPLOAD_DIR, filename)
 }
