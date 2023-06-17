@@ -54,42 +54,49 @@ func downloadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	queryParams := r.URL.Query()
-	filename := queryParams.Get("filename")
+	fileName := queryParams.Get("filename")
 
-	if filename == "" {
+	if fileName == "" {
 		http.Error(w, MSG_ERR_MISSING_QUERY_PARAM, http.StatusBadRequest)
 		return
 	}
 
-	filePath := getUploadFilePath(filename)
+	filePath := getUploadFilePath(fileName)
 
 	file, err := os.Open(filePath)
 	if err != nil {
 		http.Error(w, MSG_ERR_FILE_NOT_FOUND, http.StatusNotFound)
 		return
 	}
-
 	defer file.Close()
 
-	fileinfo, err := file.Stat()
+	stat, err := file.Stat()
 	if err != nil {
 		http.Error(w, MSG_ERR_CANNOT_READ_FILE, http.StatusInternalServerError)
-		return
 	}
 
-	w.Header().Set("Content-Length", strconv.FormatInt(fileinfo.Size(), 10))
-
-	contentType := mime.TypeByExtension(filepath.Ext(filePath))
-	if contentType == "" {
-		contentType = "application/octet-stream"
-	}
-
-	w.Header().Set("Content-Type", contentType)
-	w.Header().Set("Content-Disposition", "attachment; filename="+filename)
+	setFileHeaders(w, file, stat.Size(), fileName, filePath)
 
 	_, err = io.Copy(w, file)
 	if err != nil {
 		http.Error(w, MSG_ERR_CANNOT_SEND_FILE, http.StatusInternalServerError)
 		return
 	}
+}
+
+func setFileHeaders(w http.ResponseWriter, file *os.File, size int64, name string, path string) {
+	w.Header().Set("Content-Length", strconv.FormatInt(size, 10))
+	w.Header().Set("Content-Disposition", "attachment; filename="+name)
+
+	contentType := guessFileContentType(path)
+	w.Header().Set("Content-Type", contentType)
+}
+
+func guessFileContentType(path string) string {
+	contentType := mime.TypeByExtension(filepath.Ext(path))
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+
+	return contentType
 }
