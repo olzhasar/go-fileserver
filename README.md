@@ -1,11 +1,12 @@
-# Simple File Server
+# go-fileserver
 
-A simple file server built with Go Programming Language
+A tiny file server implemented in Go Programming Language
 
 ## Features
 
-- Upload a file to the server via an HTTP POST request
-- Download a file from the server via an HTTP GET request
+- Upload a file to the server using HTTP POST request
+- Download a file from the server using HTTP GET request
+- Log every incoming request with duration info to `stdout`
 
 ## Usage
 
@@ -37,6 +38,9 @@ curl -O -J -L http://localhost:8080/download/?filename=example.txt
 
 Replace `filename.txt` with the name of the file you want to download.
 
-## To Do
+### Roadmap
 
-- Unit tests
+- Unique urls for each upload persisted in a database (e.g. SQLite)
+- Multiple options for persisting uploads (SQLite, PostgreSQL, Redis)
+- File logger
+- Configurations via .yaml file
