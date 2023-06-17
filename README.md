@@ -40,7 +40,8 @@ Replace `filename.txt` with the name of the file you want to download.
 
 ### Roadmap
 
+- Multiple storage backends (FileSystem, In-Memory, S3)
 - Unique urls for each upload persisted in a database (e.g. SQLite)
 - Multiple options for persisting uploads (SQLite, PostgreSQL, Redis)
 - File logger
-- Configurations via .yaml file
+- Server configurations via .yaml file
