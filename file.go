@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 )
 
-const UPLOAD_DIR = "uploads"
+var UPLOAD_DIR = "uploads"
 
 func getUploadFilePath(filename string) string {
 	return filepath.Join(UPLOAD_DIR, filename)
