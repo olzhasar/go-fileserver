@@ -7,8 +7,10 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 )
 
@@ -73,6 +75,50 @@ func TestUpload(t *testing.T) {
 	})
 }
 
+func TestDownload(t *testing.T) {
+	defer setupTest()()
+
+	buildDownloadUrl := func(fileName string) string {
+		return fmt.Sprintf("%v?filename=%v", DOWNLOAD_URL, url.QueryEscape(fileName))
+	}
+
+	t.Run("downloads successfully", func(t *testing.T) {
+		fileName := "manual.txt"
+		fileContent := "test content"
+
+		createUploadedFile(fileName, fileContent)
+		assertFileSaved(t, fileName, fileContent)
+
+		request := httptest.NewRequest(http.MethodGet, buildDownloadUrl(fileName), &bytes.Buffer{})
+		response := httptest.NewRecorder()
+
+		downloadHandler(response, request)
+
+		assertResponseStatus(t, response, http.StatusOK)
+		assertResponseBody(t, response, fileContent)
+		assertResponseFileHeaders(t, response, fileName, fileContent)
+	})
+	t.Run("returns error if filename query param is missing", func(t *testing.T) {
+		request := httptest.NewRequest(http.MethodGet, DOWNLOAD_URL, &bytes.Buffer{})
+		response := httptest.NewRecorder()
+
+		downloadHandler(response, request)
+
+		assertResponseStatus(t, response, http.StatusBadRequest)
+		assertResponseBody(t, response, MSG_ERR_MISSING_QUERY_PARAM+"\n")
+	})
+	t.Run("returns 404 if file not found", func(t *testing.T) {
+		fileName := "nonexistent.txt"
+
+		request := httptest.NewRequest(http.MethodGet, buildDownloadUrl(fileName), &bytes.Buffer{})
+		response := httptest.NewRecorder()
+
+		downloadHandler(response, request)
+
+		assertResponseStatus(t, response, http.StatusNotFound)
+	})
+}
+
 func createFileUploadRequest(method, fieldName, fileName, content string) *http.Request {
 	buffer := bytes.Buffer{}
 	writer := multipart.NewWriter(&buffer)
@@ -85,6 +131,11 @@ func createFileUploadRequest(method, fieldName, fileName, content string) *http.
 	request.Header.Add("Content-Type", writer.FormDataContentType())
 
 	return request
+}
+
+func createUploadedFile(fileName string, fileContent string) {
+	path := filepath.Join(UPLOAD_DIR, fileName)
+	os.WriteFile(path, []byte(fileContent), 0644)
 }
 
 func assertResponseStatus(t testing.TB, response *httptest.ResponseRecorder, want int) {
@@ -101,6 +152,26 @@ func assertResponseBody(t testing.TB, response *httptest.ResponseRecorder, want 
 	if response.Body.String() != want {
 		t.Errorf("Got response %q, but want %q", response.Body.String(), want)
 	}
+}
+
+func assertResponseHeader(t testing.TB, response *httptest.ResponseRecorder, header string, want []string) {
+	t.Helper()
+
+	values := response.Header().Values(header)
+
+	if !reflect.DeepEqual(values, want) {
+		t.Errorf("Got Header values %q, but want %q", values, want)
+	}
+}
+
+func assertResponseFileHeaders(t testing.TB, response *httptest.ResponseRecorder, fileName, fileContent string) {
+	t.Helper()
+
+	contentLength := fmt.Sprint(len(fileContent))
+
+	assertResponseHeader(t, response, "Content-Type", []string{"text/plain; charset=utf-8"})
+	assertResponseHeader(t, response, "Content-Disposition", []string{"attachment; filename=" + fileName})
+	assertResponseHeader(t, response, "Content-Length", []string{contentLength})
 }
 
 func assertFileSaved(t testing.TB, fileName, want string) {
