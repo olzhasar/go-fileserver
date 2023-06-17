@@ -37,7 +37,7 @@ func TestUpload(t *testing.T) {
 		uploadHandler(response, request)
 
 		assertResponseStatus(t, response, http.StatusOK)
-		assertResponseBody(t, response, "File uploaded successfully")
+		assertResponseBody(t, response, MSG_UPLOAD_SUCCESS)
 
 		assertFileSaved(t, fileName, fileContent)
 		deleteUploadedFile(t, fileName)
@@ -53,7 +53,7 @@ func TestUpload(t *testing.T) {
 		uploadHandler(response, request)
 
 		assertResponseStatus(t, response, http.StatusMethodNotAllowed)
-		assertResponseBody(t, response, MSG_INVALID_REQUEST_METHOD+"\n")
+		assertResponseBody(t, response, MSG_ERR_INVALID_REQUEST_METHOD+"\n")
 
 		assertFileDoesNotExist(t, fileName)
 	})
@@ -67,7 +67,7 @@ func TestUpload(t *testing.T) {
 		uploadHandler(response, request)
 
 		assertResponseStatus(t, response, http.StatusBadRequest)
-		assertResponseBody(t, response, MSG_CANNOT_READ_FILE+"\n")
+		assertResponseBody(t, response, MSG_ERR_CANNOT_READ_FILE+"\n")
 
 		assertFileDoesNotExist(t, fileName)
 	})

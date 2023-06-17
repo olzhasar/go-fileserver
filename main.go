@@ -16,8 +16,12 @@ const PORT = "8080"
 const UPLOAD_URL = "/upload"
 const DOWNLOAD_URL = "/download"
 
-const MSG_INVALID_REQUEST_METHOD = "Invalid request method"
-const MSG_CANNOT_READ_FILE = "Unable to read uploaded file"
+const MSG_UPLOAD_SUCCESS = "File uploaded successfully"
+const MSG_ERR_INVALID_REQUEST_METHOD = "Invalid request method"
+const MSG_ERR_CANNOT_READ_FILE = "Unable to read uploaded file"
+const MSG_ERR_FILE_NOT_FOUND = "File not found"
+const MSG_ERR_CANNOT_SEND_FILE = "Unable to send file"
+const MSG_ERR_MISSING_QUERY_PARAM = "Missing filename query param"
 
 func checkUploadDir() {
 	err := os.MkdirAll(UPLOAD_DIR, 0755)
@@ -49,13 +53,13 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 
 func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
-		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		http.Error(w, MSG_ERR_INVALID_REQUEST_METHOD, http.StatusMethodNotAllowed)
 		return
 	}
 
 	file, fileHeader, err := r.FormFile("file")
 	if err != nil {
-		http.Error(w, "Unable to read uploaded file", http.StatusBadRequest)
+		http.Error(w, MSG_ERR_CANNOT_READ_FILE, http.StatusBadRequest)
 		return
 	}
 
@@ -65,12 +69,12 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, "File uploaded successfully")
+	fmt.Fprint(w, MSG_UPLOAD_SUCCESS)
 }
 
 func downloadHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
-		http.Error(w, "Invalid request method", http.StatusBadRequest)
+		http.Error(w, MSG_ERR_INVALID_REQUEST_METHOD, http.StatusBadRequest)
 		return
 	}
 
@@ -78,7 +82,7 @@ func downloadHandler(w http.ResponseWriter, r *http.Request) {
 	filename := queryParams.Get("filename")
 
 	if filename == "" {
-		http.Error(w, "Missing filename query parameter", http.StatusBadRequest)
+		http.Error(w, MSG_ERR_MISSING_QUERY_PARAM, http.StatusBadRequest)
 		return
 	}
 
@@ -86,7 +90,7 @@ func downloadHandler(w http.ResponseWriter, r *http.Request) {
 
 	file, err := os.Open(filePath)
 	if err != nil {
-		http.Error(w, "File not found", http.StatusNotFound)
+		http.Error(w, MSG_ERR_FILE_NOT_FOUND, http.StatusNotFound)
 		return
 	}
 
@@ -94,7 +98,7 @@ func downloadHandler(w http.ResponseWriter, r *http.Request) {
 
 	fileinfo, err := file.Stat()
 	if err != nil {
-		http.Error(w, "Unable to read file info", http.StatusInternalServerError)
+		http.Error(w, MSG_ERR_CANNOT_READ_FILE, http.StatusInternalServerError)
 		return
 	}
 
@@ -110,7 +114,7 @@ func downloadHandler(w http.ResponseWriter, r *http.Request) {
 
 	_, err = io.Copy(w, file)
 	if err != nil {
-		http.Error(w, "Unable to send file", http.StatusInternalServerError)
+		http.Error(w, MSG_ERR_CANNOT_SEND_FILE, http.StatusInternalServerError)
 		return
 	}
 }
