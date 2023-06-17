@@ -1,13 +1,14 @@
 package main
 
 import (
-	"log"
+	"fmt"
 	"net/http"
 	"time"
 )
 
 type LoggingMiddleware struct {
 	handler http.Handler
+	logger  Logger
 }
 
 func (l *LoggingMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -15,9 +16,11 @@ func (l *LoggingMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	l.handler.ServeHTTP(w, r)
 
-	log.Printf("%s %s DURATION: %v", r.Method, r.URL, time.Since(start))
+	message := fmt.Sprintf("%s %s DURATION: %v", r.Method, r.URL, time.Since(start))
+
+	l.logger.Log(message)
 }
 
-func MakeLoggedHandler(handler http.Handler) *LoggingMiddleware {
-	return &LoggingMiddleware{handler}
+func MakeLoggedHandler(handler http.Handler) http.Handler {
+	return &LoggingMiddleware{handler, &StdLogger{}}
 }
