@@ -1,6 +1,6 @@
 # Simple File Server
 
-A simple file server for uploading and downloading files, built using Go as a practice project to learn Golang.
+A simple file server built with Go Programming Language
 
 ## Features
 
@@ -37,6 +37,6 @@ curl -O -J -L http://localhost:8080/download/?filename=example.txt
 
 Replace `filename.txt` with the name of the file you want to download.
 
-## TODO
+## To Do
 
 - Unit tests
