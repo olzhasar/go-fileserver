@@ -59,7 +59,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := saveFile(fileHeader.Filename, &file); err != nil {
+	if err := saveFile(fileHeader.Filename, file); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

@@ -2,19 +2,18 @@ package main
 
 import (
 	"io"
-	"mime/multipart"
 	"os"
 	"path/filepath"
 )
 
 var UPLOAD_DIR = "uploads"
 
-func getUploadFilePath(filename string) string {
-	return filepath.Join(UPLOAD_DIR, filename)
+func getUploadFilePath(fileName string) string {
+	return filepath.Join(UPLOAD_DIR, fileName)
 }
 
-func saveFile(filename string, f *multipart.File) error {
-	newFilePath := getUploadFilePath(filename)
+func saveFile(fileName string, content io.Reader) error {
+	newFilePath := getUploadFilePath(fileName)
 	newFile, err := os.Create(newFilePath)
 
 	if err != nil {
@@ -23,7 +22,7 @@ func saveFile(filename string, f *multipart.File) error {
 
 	defer newFile.Close()
 
-	_, err = io.Copy(newFile, *f)
+	_, err = io.Copy(newFile, content)
 	if err != nil {
 		return err
 	}
