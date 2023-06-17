@@ -17,7 +17,7 @@ func init() {
 }
 
 func setupTest() func() {
-	checkUploadDir()
+	createDirIfNotExists(UPLOAD_DIR)
 
 	return func() {
 		os.RemoveAll(UPLOAD_DIR)

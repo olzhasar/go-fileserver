@@ -6,8 +6,6 @@ import (
 	"path/filepath"
 )
 
-var UPLOAD_DIR = "uploads"
-
 func getUploadFilePath(fileName string) string {
 	return filepath.Join(UPLOAD_DIR, fileName)
 }
@@ -28,4 +26,8 @@ func saveFile(fileName string, content io.Reader) error {
 	}
 
 	return nil
+}
+
+func createDirIfNotExists(path string) error {
+	return os.MkdirAll(path, 0755)
 }
