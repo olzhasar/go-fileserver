@@ -3,10 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
-	"mime"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strconv"
 )
 
@@ -38,7 +35,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := saveFile(fileHeader.Filename, file); err != nil {
+	if err := storage.saveFile(fileHeader.Filename, file); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -61,40 +58,30 @@ func downloadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filePath := getUploadFilePath(fileName)
-
-	file, err := os.Open(filePath)
+	upload, err := storage.loadFile(fileName)
 	if err != nil {
 		http.Error(w, MSG_ERR_FILE_NOT_FOUND, http.StatusNotFound)
 		return
 	}
-	defer file.Close()
+	defer upload.file.Close()
 
-	stat, err := file.Stat()
-	if err != nil {
-		http.Error(w, MSG_ERR_CANNOT_READ_FILE, http.StatusInternalServerError)
-		return
-	}
-
-	setFileHeaders(w, file, stat.Size(), fileName, filePath)
-
-	_, err = io.Copy(w, file)
+	_, err = io.Copy(w, upload.file)
 	if err != nil {
 		http.Error(w, MSG_ERR_CANNOT_SEND_FILE, http.StatusInternalServerError)
 		return
 	}
+
+	setFileHeaders(w, upload)
 }
 
-func setFileHeaders(w http.ResponseWriter, file *os.File, size int64, name string, path string) {
-	w.Header().Set("Content-Length", strconv.FormatInt(size, 10))
-	w.Header().Set("Content-Disposition", "attachment; filename="+name)
-
-	contentType := guessFileContentType(path)
-	w.Header().Set("Content-Type", contentType)
+func setFileHeaders(w http.ResponseWriter, upload UploadedFile) {
+	w.Header().Set("Content-Length", strconv.FormatInt(upload.size, 10))
+	w.Header().Set("Content-Disposition", "attachment; filename="+upload.name)
+	w.Header().Set("Content-Type", guessFileContentType(upload))
 }
 
-func guessFileContentType(path string) string {
-	contentType := mime.TypeByExtension(filepath.Ext(path))
+func guessFileContentType(upload UploadedFile) string {
+	contentType := upload.mime_type
 	if contentType == "" {
 		contentType = "application/octet-stream"
 	}

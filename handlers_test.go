@@ -16,6 +16,7 @@ import (
 
 func init() {
 	UPLOAD_DIR = "tmp"
+	storage = &FileSystemStorage{}
 }
 
 func setupTest() func() {

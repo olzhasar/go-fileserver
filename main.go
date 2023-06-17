@@ -6,10 +6,13 @@ import (
 )
 
 var UPLOAD_DIR = "uploads"
+var storage Storage
 
 const PORT = "8080"
 
 func main() {
+	storage = &FileSystemStorage{} // todo: figure out di mechanism to replace global variables
+
 	createDirIfNotExists(UPLOAD_DIR)
 
 	mux := http.NewServeMux()
@@ -20,6 +23,6 @@ func main() {
 
 	loggedMux := MakeLoggedHandler(mux)
 
-	log.Printf("Starting server on port %s...\n", PORT)
+	log.Printf("Starting the server on port %s...\n", PORT)
 	log.Fatal(http.ListenAndServe(":"+PORT, loggedMux))
 }
