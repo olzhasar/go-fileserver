@@ -12,9 +12,21 @@ import (
 	"testing"
 )
 
-const UPLOAD_URL = "/upload"
+func init() {
+	UPLOAD_DIR = "tmp"
+}
+
+func setupTest() func() {
+	checkUploadDir()
+
+	return func() {
+		os.RemoveAll(UPLOAD_DIR)
+	}
+}
 
 func TestUpload(t *testing.T) {
+	defer setupTest()()
+
 	t.Run("uploads successfully", func(t *testing.T) {
 		fileName := "test_file.txt"
 		fileContent := "test content"
