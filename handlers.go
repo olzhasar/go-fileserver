@@ -73,6 +73,7 @@ func downloadHandler(w http.ResponseWriter, r *http.Request) {
 	stat, err := file.Stat()
 	if err != nil {
 		http.Error(w, MSG_ERR_CANNOT_READ_FILE, http.StatusInternalServerError)
+		return
 	}
 
 	setFileHeaders(w, file, stat.Size(), fileName, filePath)
