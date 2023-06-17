@@ -13,6 +13,9 @@ import (
 
 const PORT = "8080"
 
+const MSG_INVALID_REQUEST_METHOD = "Invalid request method"
+const MSG_CANNOT_READ_FILE = "Unable to read uploaded file"
+
 func checkUploadDir() {
 	err := os.MkdirAll(UPLOAD_DIR, 0755)
 	if err != nil {
