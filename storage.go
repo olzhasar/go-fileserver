@@ -19,10 +19,12 @@ type Storage interface {
 	loadFile(fileName string) (uploaded UploadedFile, err error)
 }
 
-type FileSystemStorage struct{}
+type FileSystemStorage struct {
+	uploadDir string
+}
 
 func (f *FileSystemStorage) saveFile(fileName string, source io.Reader) error {
-	newFilePath := getUploadFilePath(fileName)
+	newFilePath := f.buildPath(fileName)
 	newFile, err := os.Create(newFilePath)
 
 	if err != nil {
@@ -40,7 +42,7 @@ func (f *FileSystemStorage) saveFile(fileName string, source io.Reader) error {
 }
 
 func (f *FileSystemStorage) loadFile(fileName string) (upload UploadedFile, err error) {
-	path := getUploadFilePath(fileName)
+	path := f.buildPath(fileName)
 
 	file, err := os.Open(path)
 
@@ -65,10 +67,12 @@ func (f *FileSystemStorage) loadFile(fileName string) (upload UploadedFile, err 
 	return upload, nil
 }
 
-func createDirIfNotExists(path string) error {
-	return os.MkdirAll(path, 0755)
+func (f *FileSystemStorage) buildPath(fileName string) string {
+	return filepath.Join(f.uploadDir, fileName)
 }
 
-func getUploadFilePath(fileName string) string {
-	return filepath.Join(UPLOAD_DIR, fileName)
+func NewFileSystemStoage(uploadDir string) Storage {
+	os.MkdirAll(uploadDir, 0755)
+
+	return &FileSystemStorage{uploadDir: uploadDir}
 }

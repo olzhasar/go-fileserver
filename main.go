@@ -11,9 +11,7 @@ var storage Storage
 const PORT = "8080"
 
 func main() {
-	storage = &FileSystemStorage{} // todo: figure out di mechanism to replace global variables
-
-	createDirIfNotExists(UPLOAD_DIR)
+	storage = NewFileSystemStoage(UPLOAD_DIR)
 
 	mux := http.NewServeMux()
 

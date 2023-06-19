@@ -14,16 +14,17 @@ import (
 	"testing"
 )
 
+const TMP_UPLOAD_DIR = "tmp"
+
 func init() {
-	UPLOAD_DIR = "tmp"
-	storage = &FileSystemStorage{}
+	storage = NewFileSystemStoage(TMP_UPLOAD_DIR)
 }
 
 func setupTest() func() {
-	createDirIfNotExists(UPLOAD_DIR)
+	os.MkdirAll(TMP_UPLOAD_DIR, 0755)
 
 	return func() {
-		os.RemoveAll(UPLOAD_DIR)
+		os.RemoveAll(TMP_UPLOAD_DIR)
 	}
 }
 
@@ -135,7 +136,7 @@ func createFileUploadRequest(method, fieldName, fileName, content string) *http.
 }
 
 func createUploadedFile(fileName string, fileContent string) {
-	path := filepath.Join(UPLOAD_DIR, fileName)
+	path := filepath.Join(TMP_UPLOAD_DIR, fileName)
 	os.WriteFile(path, []byte(fileContent), 0644)
 }
 
@@ -178,7 +179,7 @@ func assertResponseFileHeaders(t testing.TB, response *httptest.ResponseRecorder
 func assertFileSaved(t testing.TB, fileName, want string) {
 	t.Helper()
 
-	data, err := os.ReadFile(filepath.Join(UPLOAD_DIR, fileName))
+	data, err := os.ReadFile(filepath.Join(TMP_UPLOAD_DIR, fileName))
 	if err != nil {
 		t.Fatalf("Error opening file:\n%q", err)
 	}
@@ -191,7 +192,7 @@ func assertFileSaved(t testing.TB, fileName, want string) {
 }
 
 func assertFileDoesNotExist(t testing.TB, fileName string) {
-	_, err := os.Stat(filepath.Join(UPLOAD_DIR, fileName))
+	_, err := os.Stat(filepath.Join(TMP_UPLOAD_DIR, fileName))
 
 	if err == nil {
 		t.Fatal("expected file to not exist, but it does")
@@ -203,7 +204,7 @@ func assertFileDoesNotExist(t testing.TB, fileName string) {
 }
 
 func deleteUploadedFile(t testing.TB, fileName string) {
-	err := os.Remove(filepath.Join(UPLOAD_DIR, fileName))
+	err := os.Remove(filepath.Join(TMP_UPLOAD_DIR, fileName))
 
 	if err != nil {
 		t.Fatalf("Error deleting file:\n%q", err)
