@@ -1,6 +1,9 @@
 package main
 
 import (
+	"bytes"
+	"errors"
+	"fmt"
 	"io"
 	"mime"
 	"os"
@@ -75,4 +78,54 @@ func NewFileSystemStoage(uploadDir string) Storage {
 	os.MkdirAll(uploadDir, 0755)
 
 	return &FileSystemStorage{uploadDir: uploadDir}
+}
+
+type InMemoryStorage struct {
+	Files map[string]string
+}
+
+type InMemoryFile struct {
+	buffer io.Reader
+}
+
+func (i InMemoryFile) Read(p []byte) (int, error) {
+	return i.buffer.Read(p)
+}
+
+func (i InMemoryFile) Close() error {
+	return nil
+}
+
+func (i *InMemoryStorage) SaveFile(fileName string, source io.Reader) error {
+	buff := &bytes.Buffer{}
+	io.Copy(buff, source)
+	i.Files[fileName] = buff.String()
+	return nil
+}
+
+func (i *InMemoryStorage) LoadFile(fileName string) (UploadedFile, error) {
+	content, ok := i.Files[fileName]
+
+	if !ok {
+		return UploadedFile{}, errors.New(fmt.Sprintf("File %q not found in storage", fileName))
+	}
+
+	buff := &bytes.Buffer{}
+	buff.WriteString(content)
+	file := InMemoryFile{buff}
+
+	size := int64(len(content))
+
+	return UploadedFile{File: file, Name: fileName, Size: size}, nil
+}
+
+func (i *InMemoryStorage) Clear() {
+	for k := range i.Files {
+		delete(i.Files, k)
+	}
+}
+
+func NewInMemoryStorage() *InMemoryStorage {
+	files := make(map[string]string)
+	return &InMemoryStorage{files}
 }
