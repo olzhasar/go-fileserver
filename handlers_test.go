@@ -43,7 +43,7 @@ func TestUpload(t *testing.T) {
 		assertResponseStatus(t, response, http.StatusOK)
 		assertResponseBody(t, response, MSG_UPLOAD_SUCCESS)
 
-		assertFileSaved(t, fileName, fileContent)
+		_assertFileSaved(t, fileName, fileContent)
 		deleteUploadedFile(t, fileName)
 		assertFileDoesNotExist(t, fileName)
 	})
@@ -89,7 +89,7 @@ func TestDownload(t *testing.T) {
 		fileContent := "test content"
 
 		createUploadedFile(fileName, fileContent)
-		assertFileSaved(t, fileName, fileContent)
+		_assertFileSaved(t, fileName, fileContent)
 
 		request := httptest.NewRequest(http.MethodGet, buildDownloadUrl(fileName), &bytes.Buffer{})
 		response := httptest.NewRecorder()
@@ -176,7 +176,7 @@ func assertResponseFileHeaders(t testing.TB, response *httptest.ResponseRecorder
 	assertResponseHeader(t, response, "Content-Length", []string{contentLength})
 }
 
-func assertFileSaved(t testing.TB, fileName, want string) {
+func _assertFileSaved(t testing.TB, fileName, want string) {
 	t.Helper()
 
 	data, err := os.ReadFile(filepath.Join(TMP_UPLOAD_DIR, fileName))

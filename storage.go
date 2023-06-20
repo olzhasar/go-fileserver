@@ -8,10 +8,13 @@ import (
 )
 
 type UploadedFile struct {
-	file      io.ReadCloser
-	name      string
-	size      int64
-	mime_type string
+	file io.ReadCloser
+	name string
+	size int64
+}
+
+func (u *UploadedFile) MimeTypeByExt() string {
+	return mime.TypeByExtension(filepath.Ext(u.name))
 }
 
 type Storage interface {
@@ -55,13 +58,10 @@ func (f *FileSystemStorage) loadFile(fileName string) (upload UploadedFile, err 
 		return UploadedFile{}, err
 	}
 
-	mime_type := mime.TypeByExtension(filepath.Ext(path))
-
 	upload = UploadedFile{
-		file:      file,
-		name:      fileName,
-		size:      stat.Size(),
-		mime_type: mime_type,
+		file: file,
+		name: fileName,
+		size: stat.Size(),
 	}
 
 	return upload, nil

@@ -81,7 +81,7 @@ func setFileHeaders(w http.ResponseWriter, upload UploadedFile) {
 }
 
 func guessFileContentType(upload UploadedFile) string {
-	contentType := upload.mime_type
+	contentType := upload.MimeTypeByExt()
 	if contentType == "" {
 		contentType = "application/octet-stream"
 	}
