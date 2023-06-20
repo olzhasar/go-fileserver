@@ -1,8 +1,9 @@
-package main
+package main_test
 
 import (
 	"bytes"
 	"errors"
+	"github.com/olzhasar/go-fileserver"
 	"os"
 	"path/filepath"
 	"testing"
@@ -21,14 +22,14 @@ func TestFileSystemStorage(t *testing.T) {
 		defer setupTest()()
 
 		assertPathDoesNotExist(t, TMP_DIR)
-		NewFileSystemStoage(TMP_DIR)
+		main.NewFileSystemStoage(TMP_DIR)
 		assertPathExists(t, TMP_DIR)
 	})
 	t.Run("does nothing if path already exists", func(t *testing.T) {
 		defer setupTest()()
 
 		os.MkdirAll(TMP_DIR, 0755)
-		NewFileSystemStoage(TMP_DIR)
+		main.NewFileSystemStoage(TMP_DIR)
 		assertPathExists(t, TMP_DIR)
 	})
 	t.Run("saves a file to the upload directory", func(t *testing.T) {
@@ -37,12 +38,12 @@ func TestFileSystemStorage(t *testing.T) {
 		fileName := "example.txt"
 		fileContent := "content"
 
-		storage := NewFileSystemStoage(TMP_DIR)
+		storage := main.NewFileSystemStoage(TMP_DIR)
 
 		buff := &bytes.Buffer{}
 		buff.WriteString(fileContent)
 
-		storage.saveFile(fileName, buff)
+		storage.SaveFile(fileName, buff)
 
 		assertFileSaved(t, fileName, fileContent)
 
@@ -54,23 +55,23 @@ func TestFileSystemStorage(t *testing.T) {
 		fileName := "example.txt"
 		fileContent := "test content"
 
-		storage := NewFileSystemStoage(TMP_DIR)
+		storage := main.NewFileSystemStoage(TMP_DIR)
 
 		buff := &bytes.Buffer{}
 		buff.WriteString(fileContent)
 
-		storage.saveFile(fileName, buff)
+		storage.SaveFile(fileName, buff)
 
-		uploadedFile, _ := storage.loadFile(fileName)
+		uploadedFile, _ := storage.LoadFile(fileName)
 
-		if uploadedFile.name != fileName {
-			t.Errorf("Got name %q, want %q", uploadedFile.name, fileName)
+		if uploadedFile.Name != fileName {
+			t.Errorf("Got name %q, want %q", uploadedFile.Name, fileName)
 		}
 
 		fileSize := int64(len(fileContent))
 
-		if uploadedFile.size != fileSize {
-			t.Errorf("Got size %d, want %d", uploadedFile.size, fileSize)
+		if uploadedFile.Size != fileSize {
+			t.Errorf("Got size %d, want %d", uploadedFile.Size, fileSize)
 		}
 	})
 }

@@ -8,25 +8,25 @@ import (
 )
 
 type UploadedFile struct {
-	file io.ReadCloser
-	name string
-	size int64
+	File io.ReadCloser
+	Name string
+	Size int64
 }
 
 func (u *UploadedFile) MimeTypeByExt() string {
-	return mime.TypeByExtension(filepath.Ext(u.name))
+	return mime.TypeByExtension(filepath.Ext(u.Name))
 }
 
 type Storage interface {
-	saveFile(fileName string, content io.Reader) error
-	loadFile(fileName string) (uploaded UploadedFile, err error)
+	SaveFile(fileName string, content io.Reader) error
+	LoadFile(fileName string) (uploaded UploadedFile, err error)
 }
 
 type FileSystemStorage struct {
 	uploadDir string
 }
 
-func (f *FileSystemStorage) saveFile(fileName string, source io.Reader) error {
+func (f *FileSystemStorage) SaveFile(fileName string, source io.Reader) error {
 	newFilePath := f.buildPath(fileName)
 	newFile, err := os.Create(newFilePath)
 
@@ -44,7 +44,7 @@ func (f *FileSystemStorage) saveFile(fileName string, source io.Reader) error {
 	return nil
 }
 
-func (f *FileSystemStorage) loadFile(fileName string) (upload UploadedFile, err error) {
+func (f *FileSystemStorage) LoadFile(fileName string) (upload UploadedFile, err error) {
 	path := f.buildPath(fileName)
 
 	file, err := os.Open(path)
@@ -59,9 +59,9 @@ func (f *FileSystemStorage) loadFile(fileName string) (upload UploadedFile, err 
 	}
 
 	upload = UploadedFile{
-		file: file,
-		name: fileName,
-		size: stat.Size(),
+		File: file,
+		Name: fileName,
+		Size: stat.Size(),
 	}
 
 	return upload, nil

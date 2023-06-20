@@ -35,7 +35,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := storage.saveFile(fileHeader.Filename, file); err != nil {
+	if err := storage.SaveFile(fileHeader.Filename, file); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -58,14 +58,14 @@ func downloadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	upload, err := storage.loadFile(fileName)
+	upload, err := storage.LoadFile(fileName)
 	if err != nil {
 		http.Error(w, MSG_ERR_FILE_NOT_FOUND, http.StatusNotFound)
 		return
 	}
-	defer upload.file.Close()
+	defer upload.File.Close()
 
-	_, err = io.Copy(w, upload.file)
+	_, err = io.Copy(w, upload.File)
 	if err != nil {
 		http.Error(w, MSG_ERR_CANNOT_SEND_FILE, http.StatusInternalServerError)
 		return
@@ -75,8 +75,8 @@ func downloadHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func setFileHeaders(w http.ResponseWriter, upload UploadedFile) {
-	w.Header().Set("Content-Length", strconv.FormatInt(upload.size, 10))
-	w.Header().Set("Content-Disposition", "attachment; filename="+upload.name)
+	w.Header().Set("Content-Length", strconv.FormatInt(upload.Size, 10))
+	w.Header().Set("Content-Disposition", "attachment; filename="+upload.Name)
 	w.Header().Set("Content-Type", guessFileContentType(upload))
 }
 
