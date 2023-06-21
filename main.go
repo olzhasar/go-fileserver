@@ -1,6 +1,8 @@
 package main
 
 import (
+	"github.com/olzhasar/go-fileserver/loggers"
+	"github.com/olzhasar/go-fileserver/middleware"
 	"github.com/olzhasar/go-fileserver/router"
 	"github.com/olzhasar/go-fileserver/storages"
 	"log"
@@ -20,7 +22,8 @@ func main() {
 	mux.HandleFunc("/download", router.DownloadHandler)
 	mux.HandleFunc("/", router.RootHandler)
 
-	loggedMux := MakeLoggedHandler(mux)
+	logger := &loggers.StdLogger{}
+	loggedMux := middleware.MakeLoggedHandler(mux, logger)
 
 	log.Printf("Starting the server on port %s...\n", PORT)
 	log.Fatal(http.ListenAndServe(":"+PORT, loggedMux))

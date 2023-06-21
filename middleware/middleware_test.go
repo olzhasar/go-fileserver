@@ -1,7 +1,8 @@
-package main
+package middleware_test
 
 import (
 	"bytes"
+	"github.com/olzhasar/go-fileserver/middleware"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -25,10 +26,10 @@ func (s *StubHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func TestLoggingMiddleWare(t *testing.T) {
-	logger := StubLogger{}
+	logger := &StubLogger{}
+	handler := &StubHandler{}
 
-	handler := StubHandler{}
-	loggedHandler := LoggingMiddleware{&handler, &logger}
+	loggedHandler := middleware.MakeLoggedHandler(handler, logger)
 
 	urls := []string{
 		"/upload",

@@ -1,4 +1,4 @@
-package main
+package middleware
 
 import (
 	"fmt"
@@ -22,6 +22,6 @@ func (l *LoggingMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	l.logger.Log(message)
 }
 
-func MakeLoggedHandler(handler http.Handler) http.Handler {
-	return &LoggingMiddleware{handler, &loggers.StdLogger{}}
+func MakeLoggedHandler(handler http.Handler, logger loggers.Logger) http.Handler {
+	return &LoggingMiddleware{handler, logger}
 }
