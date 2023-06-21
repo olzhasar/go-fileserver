@@ -13,7 +13,7 @@ A tiny file server implemented in Go Programming Language
 ### Run the server
 
 ```bash
-go run main.go
+go run .
 ```
 
 The server will start on port 8080.
@@ -40,8 +40,8 @@ Replace `filename.txt` with the name of the file you want to download.
 
 ## Roadmap
 
-- Multiple storage backends (FileSystem, In-Memory, S3)
 - Unique urls for each upload persisted in a database (e.g. SQLite)
 - Multiple options for persisting uploads (SQLite, PostgreSQL, Redis)
+- S3 storage back-end
 - File logger
-- Server configurations via .yaml file
+- Server configurations via command line, .yaml file
