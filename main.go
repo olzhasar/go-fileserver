@@ -1,24 +1,24 @@
 package main
 
 import (
+	"github.com/olzhasar/go-fileserver/router"
 	"github.com/olzhasar/go-fileserver/storages"
 	"log"
 	"net/http"
 )
 
-var UPLOAD_DIR = "uploads"
-var storage storages.Storage
-
+const UPLOAD_DIR = "uploads"
 const PORT = "8080"
 
 func main() {
-	storage = storages.NewFileSystemStoage(UPLOAD_DIR)
+	storage := storages.NewFileSystemStoage(UPLOAD_DIR)
+	router := router.NewRouter(storage)
 
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/upload", uploadHandler)
-	mux.HandleFunc("/download", downloadHandler)
-	mux.HandleFunc("/", rootHandler)
+	mux.HandleFunc("/upload", router.UploadHandler)
+	mux.HandleFunc("/download", router.DownloadHandler)
+	mux.HandleFunc("/", router.RootHandler)
 
 	loggedMux := MakeLoggedHandler(mux)
 

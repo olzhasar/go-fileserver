@@ -1,8 +1,9 @@
-package main
+package router_test
 
 import (
 	"bytes"
 	"fmt"
+	"github.com/olzhasar/go-fileserver/router"
 	"github.com/olzhasar/go-fileserver/storages"
 	"io"
 	"mime/multipart"
@@ -13,31 +14,29 @@ import (
 	"testing"
 )
 
-var inMemory storages.InMemoryStorage
-
-func init() {
-	inMemory := storages.NewInMemoryStorage()
-	storage = inMemory
-}
-
-func setupTest() {
-	inMemory.Clear()
+func setupTest(s *storages.InMemoryStorage) func() {
+	return func() {
+		s.Clear()
+	}
 }
 
 func TestUpload(t *testing.T) {
-	setupTest()
+	storage := storages.NewInMemoryStorage()
+	rt := router.NewRouter(storage)
 
 	t.Run("uploads successfully", func(t *testing.T) {
+		defer setupTest(storage)()
+
 		fileName := "test_file.txt"
 		fileContent := "test content"
 
 		request := createFileUploadRequest(http.MethodPost, "file", fileName, fileContent)
 		response := httptest.NewRecorder()
 
-		uploadHandler(response, request)
+		rt.UploadHandler(response, request)
 
 		assertResponseStatus(t, response, http.StatusOK)
-		assertResponseBody(t, response, MSG_UPLOAD_SUCCESS)
+		assertResponseBody(t, response, router.MSG_UPLOAD_SUCCESS)
 
 		uploaded, err := storage.LoadFile(fileName)
 		if err != nil {
@@ -62,70 +61,81 @@ func TestUpload(t *testing.T) {
 		}
 	})
 	t.Run("throws error for invalid request method", func(t *testing.T) {
+		defer setupTest(storage)()
+
 		fileName := "test_file.txt"
 		fileContent := "test content"
 
 		request := createFileUploadRequest(http.MethodGet, "file", fileName, fileContent)
 		response := httptest.NewRecorder()
 
-		uploadHandler(response, request)
+		rt.UploadHandler(response, request)
 
 		assertResponseStatus(t, response, http.StatusMethodNotAllowed)
-		assertResponseBody(t, response, MSG_ERR_INVALID_REQUEST_METHOD+"\n")
-		assertStorageIsEmpty(t)
+		assertResponseBody(t, response, router.MSG_ERR_INVALID_REQUEST_METHOD+"\n")
+		assertStorageIsEmpty(t, storage)
 	})
 	t.Run("throws error for invalid file field name", func(t *testing.T) {
+		defer setupTest(storage)()
+
 		fileName := "test_file.txt"
 		fileContent := "test content"
 
 		request := createFileUploadRequest(http.MethodPost, "invalid", fileName, fileContent)
 		response := httptest.NewRecorder()
 
-		uploadHandler(response, request)
+		rt.UploadHandler(response, request)
 
 		assertResponseStatus(t, response, http.StatusBadRequest)
-		assertResponseBody(t, response, MSG_ERR_CANNOT_READ_FILE+"\n")
-		assertStorageIsEmpty(t)
+		assertResponseBody(t, response, router.MSG_ERR_CANNOT_READ_FILE+"\n")
+		assertStorageIsEmpty(t, storage)
 	})
 }
 
 func TestDownload(t *testing.T) {
-	setupTest()
+	storage := storages.NewInMemoryStorage()
+	rt := router.NewRouter(storage)
 
 	buildDownloadUrl := func(fileName string) string {
-		return fmt.Sprintf("%v?filename=%v", DOWNLOAD_URL, url.QueryEscape(fileName))
+		return fmt.Sprintf("%v?filename=%v", router.DOWNLOAD_URL, url.QueryEscape(fileName))
 	}
 
 	t.Run("downloads successfully", func(t *testing.T) {
+		defer setupTest(storage)()
+
 		fileName := "manual.txt"
 		fileContent := "test content"
-		createUploadedFile(fileName, fileContent)
+		createUploadedFile(storage, fileName, fileContent)
 
 		request := httptest.NewRequest(http.MethodGet, buildDownloadUrl(fileName), &bytes.Buffer{})
 		response := httptest.NewRecorder()
 
-		downloadHandler(response, request)
+		rt.DownloadHandler(response, request)
 
 		assertResponseStatus(t, response, http.StatusOK)
 		assertResponseBody(t, response, fileContent)
 		assertResponseFileHeaders(t, response, fileName, fileContent)
 	})
 	t.Run("returns error if filename query param is missing", func(t *testing.T) {
-		request := httptest.NewRequest(http.MethodGet, DOWNLOAD_URL, &bytes.Buffer{})
+		defer setupTest(storage)()
+
+		request := httptest.NewRequest(http.MethodGet, router.DOWNLOAD_URL, &bytes.Buffer{})
 		response := httptest.NewRecorder()
 
-		downloadHandler(response, request)
+		rt.DownloadHandler(response, request)
 
 		assertResponseStatus(t, response, http.StatusBadRequest)
-		assertResponseBody(t, response, MSG_ERR_MISSING_QUERY_PARAM+"\n")
+		assertResponseBody(t, response, router.MSG_ERR_MISSING_QUERY_PARAM+"\n")
 	})
 	t.Run("returns 404 if file not found", func(t *testing.T) {
+		defer setupTest(storage)()
+
 		fileName := "nonexistent.txt"
 
 		request := httptest.NewRequest(http.MethodGet, buildDownloadUrl(fileName), &bytes.Buffer{})
 		response := httptest.NewRecorder()
 
-		downloadHandler(response, request)
+		rt.DownloadHandler(response, request)
 
 		assertResponseStatus(t, response, http.StatusNotFound)
 	})
@@ -139,13 +149,13 @@ func createFileUploadRequest(method, fieldName, fileName, content string) *http.
 	part, _ := writer.CreateFormFile(fieldName, fileName)
 	fmt.Fprint(part, content)
 
-	request := httptest.NewRequest(method, UPLOAD_URL, &buffer)
+	request := httptest.NewRequest(method, router.UPLOAD_URL, &buffer)
 	request.Header.Add("Content-Type", writer.FormDataContentType())
 
 	return request
 }
 
-func createUploadedFile(fileName string, fileContent string) {
+func createUploadedFile(storage storages.Storage, fileName string, fileContent string) {
 	buffer := &bytes.Buffer{}
 	buffer.WriteString(fileContent)
 
@@ -188,10 +198,10 @@ func assertResponseFileHeaders(t testing.TB, response *httptest.ResponseRecorder
 	assertResponseHeader(t, response, "Content-Length", []string{contentLength})
 }
 
-func assertStorageIsEmpty(t testing.TB) {
+func assertStorageIsEmpty(t testing.TB, storage *storages.InMemoryStorage) {
 	t.Helper()
 
-	if len(inMemory.Files) != 0 {
-		t.Errorf("Expected storage to be empty, but got %d entries", len(inMemory.Files))
+	if len(storage.Files) != 0 {
+		t.Errorf("Expected storage to be empty, but got %d entries", len(storage.Files))
 	}
 }
