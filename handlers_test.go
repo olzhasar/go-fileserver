@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"github.com/olzhasar/go-fileserver/storages"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -12,10 +13,10 @@ import (
 	"testing"
 )
 
-var inMemory InMemoryStorage
+var inMemory storages.InMemoryStorage
 
 func init() {
-	inMemory := NewInMemoryStorage()
+	inMemory := storages.NewInMemoryStorage()
 	storage = inMemory
 }
 

@@ -1,17 +1,18 @@
 package main
 
 import (
+	"github.com/olzhasar/go-fileserver/storages"
 	"log"
 	"net/http"
 )
 
 var UPLOAD_DIR = "uploads"
-var storage Storage
+var storage storages.Storage
 
 const PORT = "8080"
 
 func main() {
-	storage = NewFileSystemStoage(UPLOAD_DIR)
+	storage = storages.NewFileSystemStoage(UPLOAD_DIR)
 
 	mux := http.NewServeMux()
 

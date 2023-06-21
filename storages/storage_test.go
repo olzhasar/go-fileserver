@@ -1,9 +1,9 @@
-package main_test
+package storages_test
 
 import (
 	"bytes"
 	"errors"
-	"github.com/olzhasar/go-fileserver"
+	"github.com/olzhasar/go-fileserver/storages"
 	"os"
 	"path/filepath"
 	"testing"
@@ -22,14 +22,14 @@ func TestFileSystemStorage(t *testing.T) {
 		defer setupTest()()
 
 		assertPathDoesNotExist(t, TMP_DIR)
-		main.NewFileSystemStoage(TMP_DIR)
+		storages.NewFileSystemStoage(TMP_DIR)
 		assertPathExists(t, TMP_DIR)
 	})
 	t.Run("does nothing if path already exists", func(t *testing.T) {
 		defer setupTest()()
 
 		os.MkdirAll(TMP_DIR, 0755)
-		main.NewFileSystemStoage(TMP_DIR)
+		storages.NewFileSystemStoage(TMP_DIR)
 		assertPathExists(t, TMP_DIR)
 	})
 	t.Run("saves a file to the upload directory", func(t *testing.T) {
@@ -39,7 +39,7 @@ func TestFileSystemStorage(t *testing.T) {
 		fileContent := "content"
 		buff := createContentBuffer(fileContent)
 
-		storage := main.NewFileSystemStoage(TMP_DIR)
+		storage := storages.NewFileSystemStoage(TMP_DIR)
 
 		storage.SaveFile(fileName, buff)
 
@@ -51,7 +51,7 @@ func TestFileSystemStorage(t *testing.T) {
 		fileName := "example.txt"
 		fileContent := "test content"
 
-		storage := main.NewFileSystemStoage(TMP_DIR)
+		storage := storages.NewFileSystemStoage(TMP_DIR)
 
 		buff := &bytes.Buffer{}
 		buff.WriteString(fileContent)
@@ -71,7 +71,7 @@ func TestInMemoryStorage(t *testing.T) {
 
 		buff := createContentBuffer(fileContent)
 
-		storage := main.NewInMemoryStorage()
+		storage := storages.NewInMemoryStorage()
 		storage.SaveFile(fileName, buff)
 
 		if val, ok := storage.Files[fileName]; !ok {
@@ -86,7 +86,7 @@ func TestInMemoryStorage(t *testing.T) {
 
 		buff := createContentBuffer(fileContent)
 
-		storage := main.NewInMemoryStorage()
+		storage := storages.NewInMemoryStorage()
 		storage.SaveFile(fileName, buff)
 
 		uploaded, err := storage.LoadFile(fileName)
@@ -100,7 +100,7 @@ func TestInMemoryStorage(t *testing.T) {
 		defer uploaded.File.Close()
 	})
 	t.Run("Throws error when loading missing file", func(t *testing.T) {
-		storage := main.NewInMemoryStorage()
+		storage := storages.NewInMemoryStorage()
 		_, err := storage.LoadFile("nonexisting.txt")
 
 		if err == nil {
@@ -108,7 +108,7 @@ func TestInMemoryStorage(t *testing.T) {
 		}
 	})
 	t.Run("Clear deletes everything from map", func(t *testing.T) {
-		storage := main.NewInMemoryStorage()
+		storage := storages.NewInMemoryStorage()
 
 		buff := createContentBuffer("test")
 		storage.SaveFile("test.txt", buff)
@@ -127,7 +127,7 @@ func createContentBuffer(content string) *bytes.Buffer {
 	return buff
 }
 
-func checkUploadedFile(t testing.TB, uploadedFile main.UploadedFile, name, content string) {
+func checkUploadedFile(t testing.TB, uploadedFile storages.UploadedFile, name, content string) {
 	t.Helper()
 
 	if uploadedFile.Name != name {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/olzhasar/go-fileserver/storages"
 	"io"
 	"net/http"
 	"strconv"
@@ -74,13 +75,13 @@ func downloadHandler(w http.ResponseWriter, r *http.Request) {
 	setFileHeaders(w, upload)
 }
 
-func setFileHeaders(w http.ResponseWriter, upload UploadedFile) {
+func setFileHeaders(w http.ResponseWriter, upload storages.UploadedFile) {
 	w.Header().Set("Content-Length", strconv.FormatInt(upload.Size, 10))
 	w.Header().Set("Content-Disposition", "attachment; filename="+upload.Name)
 	w.Header().Set("Content-Type", guessFileContentType(upload))
 }
 
-func guessFileContentType(upload UploadedFile) string {
+func guessFileContentType(upload storages.UploadedFile) string {
 	contentType := upload.MimeTypeByExt()
 	if contentType == "" {
 		contentType = "application/octet-stream"
