@@ -2,34 +2,29 @@ package main
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
-	"path/filepath"
 	"reflect"
 	"testing"
 )
 
-const TMP_UPLOAD_DIR = "tmp"
+var inMemory InMemoryStorage
 
 func init() {
-	storage = NewFileSystemStoage(TMP_UPLOAD_DIR)
+	inMemory := NewInMemoryStorage()
+	storage = inMemory
 }
 
-func setupTest() func() {
-	os.MkdirAll(TMP_UPLOAD_DIR, 0755)
-
-	return func() {
-		os.RemoveAll(TMP_UPLOAD_DIR)
-	}
+func setupTest() {
+	inMemory.Clear()
 }
 
 func TestUpload(t *testing.T) {
-	defer setupTest()()
+	setupTest()
 
 	t.Run("uploads successfully", func(t *testing.T) {
 		fileName := "test_file.txt"
@@ -43,9 +38,27 @@ func TestUpload(t *testing.T) {
 		assertResponseStatus(t, response, http.StatusOK)
 		assertResponseBody(t, response, MSG_UPLOAD_SUCCESS)
 
-		_assertFileSaved(t, fileName, fileContent)
-		deleteUploadedFile(t, fileName)
-		assertFileDoesNotExist(t, fileName)
+		uploaded, err := storage.LoadFile(fileName)
+		if err != nil {
+			t.Fatalf("Got error %q while loading uploaded file from storage", err)
+		}
+
+		if uploaded.Name != fileName {
+			t.Errorf("Got name %q, but want %q", uploaded.Name, fileName)
+		}
+
+		buff := &bytes.Buffer{}
+		io.Copy(buff, uploaded.File)
+		uploadedContent := buff.String()
+
+		if uploadedContent != fileContent {
+			t.Errorf("Got content %q, but want %q", uploadedContent, fileContent)
+		}
+
+		size := int64(len(fileContent))
+		if uploaded.Size != size {
+			t.Errorf("Got size %q, but want %q", uploaded.Size, size)
+		}
 	})
 	t.Run("throws error for invalid request method", func(t *testing.T) {
 		fileName := "test_file.txt"
@@ -58,8 +71,7 @@ func TestUpload(t *testing.T) {
 
 		assertResponseStatus(t, response, http.StatusMethodNotAllowed)
 		assertResponseBody(t, response, MSG_ERR_INVALID_REQUEST_METHOD+"\n")
-
-		assertFileDoesNotExist(t, fileName)
+		assertStorageIsEmpty(t)
 	})
 	t.Run("throws error for invalid file field name", func(t *testing.T) {
 		fileName := "test_file.txt"
@@ -72,13 +84,12 @@ func TestUpload(t *testing.T) {
 
 		assertResponseStatus(t, response, http.StatusBadRequest)
 		assertResponseBody(t, response, MSG_ERR_CANNOT_READ_FILE+"\n")
-
-		assertFileDoesNotExist(t, fileName)
+		assertStorageIsEmpty(t)
 	})
 }
 
 func TestDownload(t *testing.T) {
-	defer setupTest()()
+	setupTest()
 
 	buildDownloadUrl := func(fileName string) string {
 		return fmt.Sprintf("%v?filename=%v", DOWNLOAD_URL, url.QueryEscape(fileName))
@@ -87,9 +98,7 @@ func TestDownload(t *testing.T) {
 	t.Run("downloads successfully", func(t *testing.T) {
 		fileName := "manual.txt"
 		fileContent := "test content"
-
 		createUploadedFile(fileName, fileContent)
-		_assertFileSaved(t, fileName, fileContent)
 
 		request := httptest.NewRequest(http.MethodGet, buildDownloadUrl(fileName), &bytes.Buffer{})
 		response := httptest.NewRecorder()
@@ -136,8 +145,10 @@ func createFileUploadRequest(method, fieldName, fileName, content string) *http.
 }
 
 func createUploadedFile(fileName string, fileContent string) {
-	path := filepath.Join(TMP_UPLOAD_DIR, fileName)
-	os.WriteFile(path, []byte(fileContent), 0644)
+	buffer := &bytes.Buffer{}
+	buffer.WriteString(fileContent)
+
+	storage.SaveFile(fileName, buffer)
 }
 
 func assertResponseStatus(t testing.TB, response *httptest.ResponseRecorder, want int) {
@@ -176,37 +187,10 @@ func assertResponseFileHeaders(t testing.TB, response *httptest.ResponseRecorder
 	assertResponseHeader(t, response, "Content-Length", []string{contentLength})
 }
 
-func _assertFileSaved(t testing.TB, fileName, want string) {
+func assertStorageIsEmpty(t testing.TB) {
 	t.Helper()
 
-	data, err := os.ReadFile(filepath.Join(TMP_UPLOAD_DIR, fileName))
-	if err != nil {
-		t.Fatalf("Error opening file:\n%q", err)
-	}
-
-	content := string(data)
-
-	if content != want {
-		t.Errorf("Got %q, but want %q", data, want)
-	}
-}
-
-func assertFileDoesNotExist(t testing.TB, fileName string) {
-	_, err := os.Stat(filepath.Join(TMP_UPLOAD_DIR, fileName))
-
-	if err == nil {
-		t.Fatal("expected file to not exist, but it does")
-	}
-
-	if !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("Unexpected error:\n%q", err)
-	}
-}
-
-func deleteUploadedFile(t testing.TB, fileName string) {
-	err := os.Remove(filepath.Join(TMP_UPLOAD_DIR, fileName))
-
-	if err != nil {
-		t.Fatalf("Error deleting file:\n%q", err)
+	if len(inMemory.Files) != 0 {
+		t.Errorf("Expected storage to be empty, but got %d entries", len(inMemory.Files))
 	}
 }
