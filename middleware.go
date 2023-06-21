@@ -2,13 +2,14 @@ package main
 
 import (
 	"fmt"
+	"github.com/olzhasar/go-fileserver/loggers"
 	"net/http"
 	"time"
 )
 
 type LoggingMiddleware struct {
 	handler http.Handler
-	logger  Logger
+	logger  loggers.Logger
 }
 
 func (l *LoggingMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -22,5 +23,5 @@ func (l *LoggingMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func MakeLoggedHandler(handler http.Handler) http.Handler {
-	return &LoggingMiddleware{handler, &StdLogger{}}
+	return &LoggingMiddleware{handler, &loggers.StdLogger{}}
 }
