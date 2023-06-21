@@ -128,6 +128,8 @@ func createContentBuffer(content string) *bytes.Buffer {
 }
 
 func checkUploadedFile(t testing.TB, uploadedFile main.UploadedFile, name, content string) {
+	t.Helper()
+
 	if uploadedFile.Name != name {
 		t.Errorf("Got name %q, want %q", uploadedFile.Name, name)
 	}
@@ -140,6 +142,8 @@ func checkUploadedFile(t testing.TB, uploadedFile main.UploadedFile, name, conte
 }
 
 func assertPathDoesNotExist(t testing.TB, path string) {
+	t.Helper()
+
 	_, err := os.Stat(path)
 
 	if err == nil {
@@ -152,6 +156,8 @@ func assertPathDoesNotExist(t testing.TB, path string) {
 }
 
 func assertPathExists(t testing.TB, path string) {
+	t.Helper()
+
 	_, err := os.Stat(filepath.Join(path))
 
 	if err != nil {
