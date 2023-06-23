@@ -9,18 +9,21 @@ import (
 
 const TMP_DB_PATH = "../db.sqlite3"
 
-type RegistryTestCase struct {
-	name   string
-	create func() registry.Registry
-}
-
 func NewSQLiteRegistry() registry.Registry {
 	registry, _ := registry.NewSQLiteRegistry(TMP_DB_PATH)
 	return registry
 }
 
+func teardownRegistry(r registry.Registry) {
+	r.Clear()
+	r.Close()
+}
+
 func TestRegistries(t *testing.T) {
-	cases := []RegistryTestCase{
+	cases := []struct {
+		name           string
+		createRegistry func() registry.Registry
+	}{
 		{
 			"InMemory",
 			registry.NewInMemoryRegistry,
@@ -33,9 +36,8 @@ func TestRegistries(t *testing.T) {
 
 	for _, test := range cases {
 		t.Run(fmt.Sprintf("%s:records filename to registry", test.name), func(t *testing.T) {
-			reg := test.create()
-			defer reg.Close()
-			defer reg.Clear()
+			reg := test.createRegistry()
+			defer teardownRegistry(reg)
 
 			fileName := "test.txt"
 			token := "123456"
@@ -57,9 +59,8 @@ func TestRegistries(t *testing.T) {
 			}
 		})
 		t.Run(fmt.Sprintf("%s:returns false for nonexistent keys", test.name), func(t *testing.T) {
-			reg := test.create()
-			defer reg.Close()
-			defer reg.Clear()
+			reg := test.createRegistry()
+			defer teardownRegistry(reg)
 
 			got, ok := reg.Get("123456")
 
@@ -72,9 +73,8 @@ func TestRegistries(t *testing.T) {
 			}
 		})
 		t.Run(fmt.Sprintf("%s:Has() returns proper values", test.name), func(t *testing.T) {
-			reg := test.create()
-			defer reg.Close()
-			defer reg.Clear()
+			reg := test.createRegistry()
+			defer teardownRegistry(reg)
 
 			existing_token := "123456"
 			reg.Record(existing_token, "file.txt")
