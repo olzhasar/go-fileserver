@@ -1,61 +1,93 @@
 package registry_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/olzhasar/go-fileserver/registry"
 )
 
-func TestInMemoryRegistry(t *testing.T) {
-	t.Run("Records filename to the registry", func(t *testing.T) {
-		fileName := "test.txt"
-		token := "123456"
+const TMP_DB_PATH = "../db.sqlite3"
 
-		reg := registry.NewInMemoryRegistry()
+type RegistryTestCase struct {
+	name   string
+	create func() registry.Registry
+}
 
-		err := reg.Record(token, fileName)
+func NewSQLiteRegistry() registry.Registry {
+	registry, _ := registry.NewSQLiteRegistry(TMP_DB_PATH)
+	return registry
+}
 
-		if err != nil {
-			t.Fatalf("Expected no error, got %q", err)
-		}
+func TestRegistries(t *testing.T) {
+	cases := []RegistryTestCase{
+		{
+			"InMemory",
+			registry.NewInMemoryRegistry,
+		},
+		{
+			"SQLite",
+			NewSQLiteRegistry,
+		},
+	}
 
-		got, ok := reg.Get(token)
+	for _, test := range cases {
+		t.Run(fmt.Sprintf("%s:records filename to registry", test.name), func(t *testing.T) {
+			reg := test.create()
+			defer reg.Close()
+			defer reg.Clear()
 
-		if !ok {
-			t.Errorf("Want %q to be in registry, but it's not", token)
-		}
+			fileName := "test.txt"
+			token := "123456"
 
-		if got != fileName {
-			t.Errorf("Got %q, want %q", got, fileName)
-		}
-	})
-	t.Run("Returns false for nonexistent keys", func(t *testing.T) {
-		reg := registry.NewInMemoryRegistry()
+			err := reg.Record(token, fileName)
 
-		got, ok := reg.Get("123456")
+			if err != nil {
+				t.Fatalf("Expected no error, got %q", err)
+			}
 
-		if ok {
-			t.Error("Got ok true, want false")
-		}
+			got, ok := reg.Get(token)
 
-		if got != "" {
-			t.Errorf("Got %q, want empty string", got)
-		}
-	})
-	t.Run("Has method returns proper values", func(t *testing.T) {
-		reg := registry.NewInMemoryRegistry()
+			if !ok {
+				t.Errorf("Want %q to be in registry, but it's not", token)
+			}
 
-		existing_token := "123456"
-		reg.Record(existing_token, "file.txt")
+			if got != fileName {
+				t.Errorf("Got %q, want %q", got, fileName)
+			}
+		})
+		t.Run(fmt.Sprintf("%s:returns false for nonexistent keys", test.name), func(t *testing.T) {
+			reg := test.create()
+			defer reg.Close()
+			defer reg.Clear()
 
-		nonexistent_token := "987654"
+			got, ok := reg.Get("123456")
 
-		if !reg.Has(existing_token) {
-			t.Errorf("Want %q to be in registry, but it's not", existing_token)
-		}
+			if ok {
+				t.Error("Got ok true, want false")
+			}
 
-		if reg.Has(nonexistent_token) {
-			t.Errorf("Token %q should not be in registry, but it is", nonexistent_token)
-		}
-	})
+			if got != "" {
+				t.Errorf("Got %q, want empty string", got)
+			}
+		})
+		t.Run(fmt.Sprintf("%s:Has() returns proper values", test.name), func(t *testing.T) {
+			reg := test.create()
+			defer reg.Close()
+			defer reg.Clear()
+
+			existing_token := "123456"
+			reg.Record(existing_token, "file.txt")
+
+			nonexistent_token := "987654"
+
+			if !reg.Has(existing_token) {
+				t.Errorf("Want %q to be in registry, but it's not", existing_token)
+			}
+
+			if reg.Has(nonexistent_token) {
+				t.Errorf("Token %q should not be in registry, but it is", nonexistent_token)
+			}
+		})
+	}
 }
