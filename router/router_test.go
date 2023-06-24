@@ -36,29 +36,10 @@ func TestUpload(t *testing.T) {
 		rt.UploadHandler(response, request)
 
 		assertResponseStatus(t, response, http.StatusOK)
+
 		assertResponseBody(t, response, router.MSG_UPLOAD_SUCCESS)
 
-		uploaded, err := storage.LoadFile(fileName)
-		if err != nil {
-			t.Fatalf("Got error %q while loading uploaded file from storage", err)
-		}
-
-		if uploaded.Name != fileName {
-			t.Errorf("Got name %q, but want %q", uploaded.Name, fileName)
-		}
-
-		buff := &bytes.Buffer{}
-		io.Copy(buff, uploaded.File)
-		uploadedContent := buff.String()
-
-		if uploadedContent != fileContent {
-			t.Errorf("Got content %q, but want %q", uploadedContent, fileContent)
-		}
-
-		size := int64(len(fileContent))
-		if uploaded.Size != size {
-			t.Errorf("Got size %q, but want %q", uploaded.Size, size)
-		}
+		assertFileUploadedProperly(t, storage, fileName, fileContent)
 	})
 	t.Run("throws error for invalid request method", func(t *testing.T) {
 		defer setupTest(storage)()
@@ -141,6 +122,7 @@ func TestDownload(t *testing.T) {
 	})
 }
 
+// helper funcs
 func createFileUploadRequest(method, fieldName, fileName, content string) *http.Request {
 	buffer := bytes.Buffer{}
 	writer := multipart.NewWriter(&buffer)
@@ -155,6 +137,7 @@ func createFileUploadRequest(method, fieldName, fileName, content string) *http.
 	return request
 }
 
+// asserts
 func createUploadedFile(storage storages.Storage, fileName string, fileContent string) {
 	buffer := &bytes.Buffer{}
 	buffer.WriteString(fileContent)
@@ -196,6 +179,32 @@ func assertResponseFileHeaders(t testing.TB, response *httptest.ResponseRecorder
 	assertResponseHeader(t, response, "Content-Type", []string{"text/plain; charset=utf-8"})
 	assertResponseHeader(t, response, "Content-Disposition", []string{"attachment; filename=" + fileName})
 	assertResponseHeader(t, response, "Content-Length", []string{contentLength})
+}
+
+func assertFileUploadedProperly(t testing.TB, storage storages.Storage, fileName string, fileContent string) {
+	// Check file saved in a storage
+	uploaded, err := storage.LoadFile(fileName)
+	if err != nil {
+		t.Fatalf("Got error %q while loading uploaded file from storage", err)
+	}
+
+	// Check filename in a storage matches upload
+	if uploaded.Name != fileName {
+		t.Errorf("Got name %q, but want %q", uploaded.Name, fileName)
+	}
+
+	buff := &bytes.Buffer{}
+	io.Copy(buff, uploaded.File)
+	uploadedContent := buff.String()
+
+	if uploadedContent != fileContent {
+		t.Errorf("Got content %q, but want %q", uploadedContent, fileContent)
+	}
+
+	size := int64(len(fileContent))
+	if uploaded.Size != size {
+		t.Errorf("Got size %q, but want %q", uploaded.Size, size)
+	}
 }
 
 func assertStorageIsEmpty(t testing.TB, storage *storages.InMemoryStorage) {
