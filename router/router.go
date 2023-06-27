@@ -2,10 +2,12 @@ package router
 
 import (
 	"fmt"
-	"github.com/olzhasar/go-fileserver/storages"
 	"io"
 	"net/http"
 	"strconv"
+
+	"github.com/olzhasar/go-fileserver/registry"
+	"github.com/olzhasar/go-fileserver/storages"
 )
 
 const UPLOAD_URL = "/upload"
@@ -19,11 +21,12 @@ const MSG_ERR_CANNOT_SEND_FILE = "Unable to send file"
 const MSG_ERR_MISSING_QUERY_PARAM = "Missing filename query param"
 
 type Router struct {
-	Storage storages.Storage
+	storage  storages.Storage
+	registry registry.Registry
 }
 
-func NewRouter(storage storages.Storage) *Router {
-	return &Router{storage}
+func NewRouter(storage storages.Storage, registry registry.Registry) *Router {
+	return &Router{storage, registry}
 }
 
 func (r *Router) RootHandler(w http.ResponseWriter, req *http.Request) {
@@ -44,13 +47,20 @@ func (rt *Router) UploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := rt.Storage.SaveFile(fileHeader.Filename, file); err != nil {
+	if err := rt.storage.SaveFile(fileHeader.Filename, file); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	token, err := registry.RecordFile(rt.registry, fileHeader.Filename, registry.GenerateUniqueToken)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, MSG_UPLOAD_SUCCESS)
+
+	downloadUrl := buildDownloadURL(r.Host, token)
+	fmt.Fprint(w, downloadUrl)
 }
 
 func (rt *Router) DownloadHandler(w http.ResponseWriter, r *http.Request) {
@@ -67,7 +77,7 @@ func (rt *Router) DownloadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	upload, err := rt.Storage.LoadFile(fileName)
+	upload, err := rt.storage.LoadFile(fileName)
 	if err != nil {
 		http.Error(w, MSG_ERR_FILE_NOT_FOUND, http.StatusNotFound)
 		return
@@ -81,6 +91,10 @@ func (rt *Router) DownloadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	setFileHeaders(w, upload)
+}
+
+func buildDownloadURL(host string, token string) string {
+	return host + "?token=" + token
 }
 
 func setFileHeaders(w http.ResponseWriter, upload storages.UploadedFile) {
