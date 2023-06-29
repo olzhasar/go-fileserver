@@ -29,13 +29,23 @@ func NewFileServer(storage storages.Storage, registry registry.Registry) *FileSe
 	return &FileServer{storage, registry}
 }
 
-func (r *FileServer) RootHandler(w http.ResponseWriter, req *http.Request) {
+func (r *FileServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/upload", r.handleUpload)
+	mux.HandleFunc("/download", r.handleDownload)
+	mux.HandleFunc("/", r.handleRoot)
+
+	mux.ServeHTTP(w, req)
+}
+
+func (r *FileServer) handleRoot(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, "Welcome to the FileServer. Use upload/ or download/ endpoints")
 }
 
-func (rt *FileServer) UploadHandler(w http.ResponseWriter, r *http.Request) {
+func (rt *FileServer) handleUpload(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, MSG_ERR_INVALID_REQUEST_METHOD, http.StatusMethodNotAllowed)
 		return
@@ -63,7 +73,7 @@ func (rt *FileServer) UploadHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, downloadUrl)
 }
 
-func (rt *FileServer) DownloadHandler(w http.ResponseWriter, r *http.Request) {
+func (rt *FileServer) handleDownload(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		http.Error(w, MSG_ERR_INVALID_REQUEST_METHOD, http.StatusBadRequest)
 		return

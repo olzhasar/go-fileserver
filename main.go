@@ -23,15 +23,9 @@ func main() {
 
 	server := server.NewFileServer(storage, registry)
 
-	mux := http.NewServeMux()
-
-	mux.HandleFunc("/upload", server.UploadHandler)
-	mux.HandleFunc("/download", server.DownloadHandler)
-	mux.HandleFunc("/", server.RootHandler)
-
 	logger := &loggers.StdLogger{}
-	loggedMux := middleware.MakeLoggedHandler(mux, logger)
+	loggedServer := middleware.MakeLoggedHandler(server, logger)
 
 	log.Printf("Starting the server on port %s...\n", PORT)
-	log.Fatal(http.ListenAndServe(":"+PORT, loggedMux))
+	log.Fatal(http.ListenAndServe(":"+PORT, loggedServer))
 }

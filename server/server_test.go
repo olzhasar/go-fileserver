@@ -40,7 +40,7 @@ func TestUpload(t *testing.T) {
 		request := createFileUploadRequest(http.MethodPost, "file", fileName, fileContent)
 		response := httptest.NewRecorder()
 
-		server.UploadHandler(response, request)
+		server.ServeHTTP(response, request)
 
 		assertResponseStatus(t, response, http.StatusOK)
 
@@ -72,7 +72,7 @@ func TestUpload(t *testing.T) {
 		request := createFileUploadRequest(http.MethodGet, "file", fileName, fileContent)
 		response := httptest.NewRecorder()
 
-		server.UploadHandler(response, request)
+		server.ServeHTTP(response, request)
 
 		assertResponseStatus(t, response, http.StatusMethodNotAllowed)
 		assertResponseBody(t, response, MSG_ERR_INVALID_REQUEST_METHOD+"\n")
@@ -87,7 +87,7 @@ func TestUpload(t *testing.T) {
 		request := createFileUploadRequest(http.MethodPost, "invalid", fileName, fileContent)
 		response := httptest.NewRecorder()
 
-		server.UploadHandler(response, request)
+		server.ServeHTTP(response, request)
 
 		assertResponseStatus(t, response, http.StatusBadRequest)
 		assertResponseBody(t, response, MSG_ERR_CANNOT_READ_FILE+"\n")
@@ -110,7 +110,7 @@ func TestDownload(t *testing.T) {
 		request := httptest.NewRequest(http.MethodGet, buildDownloadUrl(fileName), &bytes.Buffer{})
 		response := httptest.NewRecorder()
 
-		server.DownloadHandler(response, request)
+		server.ServeHTTP(response, request)
 
 		assertResponseStatus(t, response, http.StatusOK)
 		assertResponseBody(t, response, fileContent)
@@ -122,7 +122,7 @@ func TestDownload(t *testing.T) {
 		request := httptest.NewRequest(http.MethodGet, DOWNLOAD_URL, &bytes.Buffer{})
 		response := httptest.NewRecorder()
 
-		server.DownloadHandler(response, request)
+		server.ServeHTTP(response, request)
 
 		assertResponseStatus(t, response, http.StatusBadRequest)
 		assertResponseBody(t, response, MSG_ERR_MISSING_QUERY_PARAM+"\n")
@@ -135,7 +135,7 @@ func TestDownload(t *testing.T) {
 		request := httptest.NewRequest(http.MethodGet, buildDownloadUrl(fileName), &bytes.Buffer{})
 		response := httptest.NewRecorder()
 
-		server.DownloadHandler(response, request)
+		server.ServeHTTP(response, request)
 
 		assertResponseStatus(t, response, http.StatusNotFound)
 	})
