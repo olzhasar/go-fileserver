@@ -7,7 +7,7 @@ import (
 	"github.com/olzhasar/go-fileserver/loggers"
 	"github.com/olzhasar/go-fileserver/middleware"
 	"github.com/olzhasar/go-fileserver/registry"
-	"github.com/olzhasar/go-fileserver/router"
+	"github.com/olzhasar/go-fileserver/server"
 	"github.com/olzhasar/go-fileserver/storages"
 )
 
@@ -21,13 +21,13 @@ func main() {
 		log.Fatalf("Error while initializing SQLite registry\n%s", err)
 	}
 
-	router := router.NewRouter(storage, registry)
+	server := server.NewFileServer(storage, registry)
 
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/upload", router.UploadHandler)
-	mux.HandleFunc("/download", router.DownloadHandler)
-	mux.HandleFunc("/", router.RootHandler)
+	mux.HandleFunc("/upload", server.UploadHandler)
+	mux.HandleFunc("/download", server.DownloadHandler)
+	mux.HandleFunc("/", server.RootHandler)
 
 	logger := &loggers.StdLogger{}
 	loggedMux := middleware.MakeLoggedHandler(mux, logger)

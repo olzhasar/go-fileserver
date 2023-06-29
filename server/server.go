@@ -1,4 +1,4 @@
-package router
+package server
 
 import (
 	"fmt"
@@ -20,22 +20,22 @@ const MSG_ERR_FILE_NOT_FOUND = "File not found"
 const MSG_ERR_CANNOT_SEND_FILE = "Unable to send file"
 const MSG_ERR_MISSING_QUERY_PARAM = "Missing filename query param"
 
-type Router struct {
+type FileServer struct {
 	storage  storages.Storage
 	registry registry.Registry
 }
 
-func NewRouter(storage storages.Storage, registry registry.Registry) *Router {
-	return &Router{storage, registry}
+func NewFileServer(storage storages.Storage, registry registry.Registry) *FileServer {
+	return &FileServer{storage, registry}
 }
 
-func (r *Router) RootHandler(w http.ResponseWriter, req *http.Request) {
+func (r *FileServer) RootHandler(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, "Welcome to the FileServer. Use upload/ or download/ endpoints")
 }
 
-func (rt *Router) UploadHandler(w http.ResponseWriter, r *http.Request) {
+func (rt *FileServer) UploadHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, MSG_ERR_INVALID_REQUEST_METHOD, http.StatusMethodNotAllowed)
 		return
@@ -63,7 +63,7 @@ func (rt *Router) UploadHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, downloadUrl)
 }
 
-func (rt *Router) DownloadHandler(w http.ResponseWriter, r *http.Request) {
+func (rt *FileServer) DownloadHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		http.Error(w, MSG_ERR_INVALID_REQUEST_METHOD, http.StatusBadRequest)
 		return

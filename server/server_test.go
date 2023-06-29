@@ -1,4 +1,4 @@
-package router_test
+package server
 
 import (
 	"bytes"
@@ -12,18 +12,17 @@ import (
 	"testing"
 
 	"github.com/olzhasar/go-fileserver/registry"
-	"github.com/olzhasar/go-fileserver/router"
 	"github.com/olzhasar/go-fileserver/storages"
 )
 
 var storage *storages.InMemoryStorage
-var rt *router.Router
+var server *FileServer
 var reg registry.Registry
 
 func init() {
 	storage = storages.NewInMemoryStorage()
 	reg = registry.NewInMemoryRegistry()
-	rt = router.NewRouter(storage, reg)
+	server = NewFileServer(storage, reg)
 }
 
 func cleanUp() {
@@ -41,7 +40,7 @@ func TestUpload(t *testing.T) {
 		request := createFileUploadRequest(http.MethodPost, "file", fileName, fileContent)
 		response := httptest.NewRecorder()
 
-		rt.UploadHandler(response, request)
+		server.UploadHandler(response, request)
 
 		assertResponseStatus(t, response, http.StatusOK)
 
@@ -73,10 +72,10 @@ func TestUpload(t *testing.T) {
 		request := createFileUploadRequest(http.MethodGet, "file", fileName, fileContent)
 		response := httptest.NewRecorder()
 
-		rt.UploadHandler(response, request)
+		server.UploadHandler(response, request)
 
 		assertResponseStatus(t, response, http.StatusMethodNotAllowed)
-		assertResponseBody(t, response, router.MSG_ERR_INVALID_REQUEST_METHOD+"\n")
+		assertResponseBody(t, response, MSG_ERR_INVALID_REQUEST_METHOD+"\n")
 		assertStorageIsEmpty(t)
 	})
 	t.Run("throws error for invalid file field name", func(t *testing.T) {
@@ -88,17 +87,17 @@ func TestUpload(t *testing.T) {
 		request := createFileUploadRequest(http.MethodPost, "invalid", fileName, fileContent)
 		response := httptest.NewRecorder()
 
-		rt.UploadHandler(response, request)
+		server.UploadHandler(response, request)
 
 		assertResponseStatus(t, response, http.StatusBadRequest)
-		assertResponseBody(t, response, router.MSG_ERR_CANNOT_READ_FILE+"\n")
+		assertResponseBody(t, response, MSG_ERR_CANNOT_READ_FILE+"\n")
 		assertStorageIsEmpty(t)
 	})
 }
 
 func TestDownload(t *testing.T) {
 	buildDownloadUrl := func(fileName string) string {
-		return fmt.Sprintf("%v?filename=%v", router.DOWNLOAD_URL, url.QueryEscape(fileName))
+		return fmt.Sprintf("%v?filename=%v", DOWNLOAD_URL, url.QueryEscape(fileName))
 	}
 
 	t.Run("downloads successfully", func(t *testing.T) {
@@ -111,7 +110,7 @@ func TestDownload(t *testing.T) {
 		request := httptest.NewRequest(http.MethodGet, buildDownloadUrl(fileName), &bytes.Buffer{})
 		response := httptest.NewRecorder()
 
-		rt.DownloadHandler(response, request)
+		server.DownloadHandler(response, request)
 
 		assertResponseStatus(t, response, http.StatusOK)
 		assertResponseBody(t, response, fileContent)
@@ -120,13 +119,13 @@ func TestDownload(t *testing.T) {
 	t.Run("returns error if filename query param is missing", func(t *testing.T) {
 		defer cleanUp()
 
-		request := httptest.NewRequest(http.MethodGet, router.DOWNLOAD_URL, &bytes.Buffer{})
+		request := httptest.NewRequest(http.MethodGet, DOWNLOAD_URL, &bytes.Buffer{})
 		response := httptest.NewRecorder()
 
-		rt.DownloadHandler(response, request)
+		server.DownloadHandler(response, request)
 
 		assertResponseStatus(t, response, http.StatusBadRequest)
-		assertResponseBody(t, response, router.MSG_ERR_MISSING_QUERY_PARAM+"\n")
+		assertResponseBody(t, response, MSG_ERR_MISSING_QUERY_PARAM+"\n")
 	})
 	t.Run("returns 404 if file not found", func(t *testing.T) {
 		defer cleanUp()
@@ -136,7 +135,7 @@ func TestDownload(t *testing.T) {
 		request := httptest.NewRequest(http.MethodGet, buildDownloadUrl(fileName), &bytes.Buffer{})
 		response := httptest.NewRecorder()
 
-		rt.DownloadHandler(response, request)
+		server.DownloadHandler(response, request)
 
 		assertResponseStatus(t, response, http.StatusNotFound)
 	})
@@ -154,7 +153,7 @@ func createFileUploadRequest(method, fieldName, fileName, content string) *http.
 	part, _ := writer.CreateFormFile(fieldName, fileName)
 	fmt.Fprint(part, content)
 
-	request := httptest.NewRequest(method, router.UPLOAD_URL, &buffer)
+	request := httptest.NewRequest(method, UPLOAD_URL, &buffer)
 	request.Header.Add("Content-Type", writer.FormDataContentType())
 
 	return request
