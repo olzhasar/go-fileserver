@@ -30,6 +30,15 @@ func cleanUp() {
 	reg.Clear()
 }
 
+func TestRoot(t *testing.T) {
+	request := httptest.NewRequest(http.MethodGet, "/", nil)
+	response := httptest.NewRecorder()
+
+	server.ServeHTTP(response, request)
+
+	assertResponseStatus(t, response, http.StatusOK)
+}
+
 func TestUpload(t *testing.T) {
 	t.Run("uploads successfully", func(t *testing.T) {
 		defer cleanUp()
