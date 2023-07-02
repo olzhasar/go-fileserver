@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -9,28 +10,53 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"reflect"
+	"strings"
 	"testing"
 
-	"github.com/olzhasar/go-fileserver/registry"
 	"github.com/olzhasar/go-fileserver/storages"
 )
 
-var storage *storages.InMemoryStorage
-var server *FileServer
-var reg registry.Registry
-
-func init() {
-	storage = storages.NewInMemoryStorage()
-	reg = registry.NewInMemoryRegistry()
-	server = NewFileServer(storage, reg)
+type StubFile struct {
+	fileName string
+	content  string
 }
 
-func cleanUp() {
-	storage.Clear()
-	reg.Clear()
+type StubFileManager struct {
+	data map[string]StubFile
+}
+
+func (s *StubFileManager) SaveFile(fileName string, content io.Reader) (token string, err error) {
+	token = "token"
+	buf := new(strings.Builder)
+	io.Copy(buf, content)
+	s.data[token] = StubFile{fileName, buf.String()}
+	return token, nil
+}
+
+func (s *StubFileManager) LoadFile(token string) (upload storages.UploadedFile, err error) {
+	loaded, ok := s.data[token]
+	if !ok {
+		return storages.UploadedFile{}, errors.New(fmt.Sprintf("token %q is missing", token))
+	}
+
+	buf := &bytes.Buffer{}
+	buf.WriteString(loaded.content)
+
+	f := storages.InMemoryFile{Buffer: buf}
+	size := int64(len(loaded.content))
+
+	return storages.UploadedFile{File: f, Name: loaded.fileName, Size: size}, nil
+}
+
+func NewStubFileManager() *StubFileManager {
+	data := make(map[string]StubFile)
+	return &StubFileManager{data}
 }
 
 func TestRoot(t *testing.T) {
+	mgr := NewStubFileManager()
+	server := NewFileServer(mgr)
+
 	request := httptest.NewRequest(http.MethodGet, "/", nil)
 	response := httptest.NewRecorder()
 
@@ -40,9 +66,10 @@ func TestRoot(t *testing.T) {
 }
 
 func TestUpload(t *testing.T) {
-	t.Run("uploads successfully", func(t *testing.T) {
-		defer cleanUp()
+	mgr := NewStubFileManager()
+	server := NewFileServer(mgr)
 
+	t.Run("uploads successfully", func(t *testing.T) {
 		fileName := "test_file.txt"
 		fileContent := "test content"
 
@@ -70,11 +97,9 @@ func TestUpload(t *testing.T) {
 			t.Fatalf("Token string is missing, body %q", body)
 		}
 
-		assertFileUploadedProperly(t, token, fileContent)
+		assertFileUploadedProperly(t, mgr, token, fileContent)
 	})
 	t.Run("throws error for invalid request method", func(t *testing.T) {
-		defer cleanUp()
-
 		fileName := "test_file.txt"
 		fileContent := "test content"
 
@@ -85,11 +110,8 @@ func TestUpload(t *testing.T) {
 
 		assertResponseStatus(t, response, http.StatusMethodNotAllowed)
 		assertResponseBody(t, response, MSG_ERR_INVALID_REQUEST_METHOD+"\n")
-		assertStorageIsEmpty(t)
 	})
 	t.Run("throws error for invalid file field name", func(t *testing.T) {
-		defer cleanUp()
-
 		fileName := "test_file.txt"
 		fileContent := "test content"
 
@@ -100,23 +122,27 @@ func TestUpload(t *testing.T) {
 
 		assertResponseStatus(t, response, http.StatusBadRequest)
 		assertResponseBody(t, response, MSG_ERR_CANNOT_READ_FILE+"\n")
-		assertStorageIsEmpty(t)
 	})
 }
 
 func TestDownload(t *testing.T) {
-	buildDownloadUrl := func(fileName string) string {
-		return fmt.Sprintf("%v?filename=%v", DOWNLOAD_URL, url.QueryEscape(fileName))
+	mgr := NewStubFileManager()
+	server := NewFileServer(mgr)
+
+	buildDownloadUrl := func(token string) string {
+		return fmt.Sprintf("%v?token=%v", DOWNLOAD_URL, url.QueryEscape(token))
 	}
 
 	t.Run("downloads successfully", func(t *testing.T) {
-		defer cleanUp()
-
 		fileName := "manual.txt"
 		fileContent := "test content"
-		createUploadedFile(fileName, fileContent)
 
-		request := httptest.NewRequest(http.MethodGet, buildDownloadUrl(fileName), &bytes.Buffer{})
+		buf := &bytes.Buffer{}
+		buf.WriteString(fileContent)
+
+		token, _ := mgr.SaveFile(fileName, buf)
+
+		request := httptest.NewRequest(http.MethodGet, buildDownloadUrl(token), nil)
 		response := httptest.NewRecorder()
 
 		server.ServeHTTP(response, request)
@@ -126,9 +152,7 @@ func TestDownload(t *testing.T) {
 		assertResponseFileHeaders(t, response, fileName, fileContent)
 	})
 	t.Run("returns error if filename query param is missing", func(t *testing.T) {
-		defer cleanUp()
-
-		request := httptest.NewRequest(http.MethodGet, DOWNLOAD_URL, &bytes.Buffer{})
+		request := httptest.NewRequest(http.MethodGet, DOWNLOAD_URL, nil)
 		response := httptest.NewRecorder()
 
 		server.ServeHTTP(response, request)
@@ -137,11 +161,9 @@ func TestDownload(t *testing.T) {
 		assertResponseBody(t, response, MSG_ERR_MISSING_QUERY_PARAM+"\n")
 	})
 	t.Run("returns 404 if file not found", func(t *testing.T) {
-		defer cleanUp()
-
 		fileName := "nonexistent.txt"
 
-		request := httptest.NewRequest(http.MethodGet, buildDownloadUrl(fileName), &bytes.Buffer{})
+		request := httptest.NewRequest(http.MethodGet, buildDownloadUrl(fileName), nil)
 		response := httptest.NewRecorder()
 
 		server.ServeHTTP(response, request)
@@ -166,13 +188,6 @@ func createFileUploadRequest(method, fieldName, fileName, content string) *http.
 	request.Header.Add("Content-Type", writer.FormDataContentType())
 
 	return request
-}
-
-func createUploadedFile(fileName string, fileContent string) {
-	buffer := &bytes.Buffer{}
-	buffer.WriteString(fileContent)
-
-	storage.SaveFile(fileName, buffer)
 }
 
 // ------
@@ -215,41 +230,15 @@ func assertResponseFileHeaders(t testing.TB, response *httptest.ResponseRecorder
 	assertResponseHeader(t, response, "Content-Length", []string{contentLength})
 }
 
-func assertFileUploadedProperly(t testing.TB, token string, fileContent string) {
+func assertFileUploadedProperly(t testing.TB, mgr *StubFileManager, token string, fileContent string) {
 	t.Helper()
 
-	fileName, ok := reg.Get(token)
+	loaded, ok := mgr.data[token]
 	if !ok {
-		t.Fatalf("Want token %q to be in the registry, but it's not", token)
+		t.Fatalf("Want %q to be in data, but it's not", token)
 	}
 
-	uploaded, err := storage.LoadFile(fileName)
-	if err != nil {
-		t.Fatalf("Got error %q while loading uploaded file from storage", err)
-	}
-
-	if uploaded.Name != fileName {
-		t.Errorf("Got name %q, but want %q", uploaded.Name, fileName)
-	}
-
-	buff := &bytes.Buffer{}
-	io.Copy(buff, uploaded.File)
-	uploadedContent := buff.String()
-
-	if uploadedContent != fileContent {
-		t.Errorf("Got content %q, but want %q", uploadedContent, fileContent)
-	}
-
-	size := int64(len(fileContent))
-	if uploaded.Size != size {
-		t.Errorf("Got size %q, but want %q", uploaded.Size, size)
-	}
-}
-
-func assertStorageIsEmpty(t testing.TB) {
-	t.Helper()
-
-	if len(storage.Files) != 0 {
-		t.Errorf("Expected storage to be empty, but got %d entries", len(storage.Files))
+	if loaded.content != fileContent {
+		t.Fatalf("Got content %q, want %q", loaded.content, fileContent)
 	}
 }

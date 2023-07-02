@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/olzhasar/go-fileserver/registry"
 	"github.com/olzhasar/go-fileserver/storages"
 )
 
@@ -20,32 +19,36 @@ const MSG_ERR_FILE_NOT_FOUND = "File not found"
 const MSG_ERR_CANNOT_SEND_FILE = "Unable to send file"
 const MSG_ERR_MISSING_QUERY_PARAM = "Missing filename query param"
 
+type FileManager interface {
+	SaveFile(fileName string, content io.Reader) (token string, err error)
+	LoadFile(token string) (upload storages.UploadedFile, err error)
+}
+
 type FileServer struct {
-	storage  storages.Storage
-	registry registry.Registry
+	manager FileManager
 }
 
-func NewFileServer(storage storages.Storage, registry registry.Registry) *FileServer {
-	return &FileServer{storage, registry}
+func NewFileServer(f FileManager) *FileServer {
+	return &FileServer{f}
 }
 
-func (r *FileServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+func (f *FileServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/upload", r.handleUpload)
-	mux.HandleFunc("/download", r.handleDownload)
-	mux.HandleFunc("/", r.handleRoot)
+	mux.HandleFunc("/upload", f.handleUpload)
+	mux.HandleFunc("/download", f.handleDownload)
+	mux.HandleFunc("/", f.handleRoot)
 
 	mux.ServeHTTP(w, req)
 }
 
-func (r *FileServer) handleRoot(w http.ResponseWriter, req *http.Request) {
+func (f *FileServer) handleRoot(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, "Welcome to the FileServer. Use upload/ or download/ endpoints")
 }
 
-func (rt *FileServer) handleUpload(w http.ResponseWriter, r *http.Request) {
+func (f *FileServer) handleUpload(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, MSG_ERR_INVALID_REQUEST_METHOD, http.StatusMethodNotAllowed)
 		return
@@ -57,12 +60,7 @@ func (rt *FileServer) handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := rt.storage.SaveFile(fileHeader.Filename, file); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	token, err := registry.RecordFile(rt.registry, fileHeader.Filename, registry.GenerateUniqueToken)
+	token, err := f.manager.SaveFile(fileHeader.Filename, file)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -73,21 +71,21 @@ func (rt *FileServer) handleUpload(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, downloadUrl)
 }
 
-func (rt *FileServer) handleDownload(w http.ResponseWriter, r *http.Request) {
+func (f *FileServer) handleDownload(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		http.Error(w, MSG_ERR_INVALID_REQUEST_METHOD, http.StatusBadRequest)
 		return
 	}
 
 	queryParams := r.URL.Query()
-	fileName := queryParams.Get("filename")
+	token := queryParams.Get("token")
 
-	if fileName == "" {
+	if token == "" {
 		http.Error(w, MSG_ERR_MISSING_QUERY_PARAM, http.StatusBadRequest)
 		return
 	}
 
-	upload, err := rt.storage.LoadFile(fileName)
+	upload, err := f.manager.LoadFile(token)
 	if err != nil {
 		http.Error(w, MSG_ERR_FILE_NOT_FOUND, http.StatusNotFound)
 		return
