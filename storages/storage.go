@@ -85,11 +85,11 @@ type InMemoryStorage struct {
 }
 
 type InMemoryFile struct {
-	buffer io.Reader
+	Buffer io.Reader
 }
 
 func (i InMemoryFile) Read(p []byte) (int, error) {
-	return i.buffer.Read(p)
+	return i.Buffer.Read(p)
 }
 
 func (i InMemoryFile) Close() error {
