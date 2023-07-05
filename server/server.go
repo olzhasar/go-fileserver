@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/olzhasar/go-fileserver/manager"
 	"github.com/olzhasar/go-fileserver/storages"
 )
 
@@ -19,16 +20,11 @@ const MSG_ERR_FILE_NOT_FOUND = "File not found"
 const MSG_ERR_CANNOT_SEND_FILE = "Unable to send file"
 const MSG_ERR_MISSING_QUERY_PARAM = "Missing filename query param"
 
-type FileManager interface {
-	SaveFile(fileName string, content io.Reader) (token string, err error)
-	LoadFile(token string) (upload storages.UploadedFile, err error)
-}
-
 type FileServer struct {
-	manager FileManager
+	manager manager.FileManager
 }
 
-func NewFileServer(f FileManager) *FileServer {
+func NewFileServer(f manager.FileManager) *FileServer {
 	return &FileServer{f}
 }
 
