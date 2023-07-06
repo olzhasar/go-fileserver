@@ -98,7 +98,7 @@ func (f *FileServer) handleDownload(w http.ResponseWriter, r *http.Request) {
 }
 
 func buildDownloadURL(host string, token string) string {
-	return host + "?token=" + token
+	return host + DOWNLOAD_URL + "?token=" + token
 }
 
 func setFileHeaders(w http.ResponseWriter, upload storages.UploadedFile) {
