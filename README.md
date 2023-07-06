@@ -1,12 +1,13 @@
 # go-fileserver
 
-A tiny file server implemented in Go Programming Language
+A tiny file sharing server implemented in Go Programming Language
 
 ## Features
 
-- Upload a file to the server using HTTP POST request
-- Download a file from the server using HTTP GET request
-- Log every incoming request with duration info to `stdout`
+- Upload files to the server using HTTP POST request
+- Download previously uploaded files using unique URLs
+- Filesystem and in-memory storage backends
+- Logging all incoming requests
 
 ## Usage
 
@@ -28,20 +29,19 @@ curl -X POST -F "file=@/path/to/your/file.txt" http://localhost:8080/upload
 
 Replace `/path/to/your/file.txt` with the path to the file you want to upload.
 
+The server will return a unique URL that can be used to download the file later.
+
 ### Download a file
 
-To download a file, send a GET request to `/download?filename={filename}`:
+To download a file, use the download link returned by the `/upload` endpoint:
 
 ```bash
-curl -O -J -L http://localhost:8080/download/?filename=example.txt
+curl -O -J -L http://localhost:8080/download/?token=gmjaeohnmbggokap
 ```
-
-Replace `filename.txt` with the name of the file you want to download.
 
 ## Roadmap
 
-- Unique urls for each upload persisted in a database (e.g. SQLite)
-- Multiple options for persisting uploads (SQLite, PostgreSQL, Redis)
+- Redis registry
 - S3 storage back-end
-- File logger
 - Server configurations via command line, .yaml file
+- File logger
