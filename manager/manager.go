@@ -18,6 +18,10 @@ type FileManager struct {
 	storage  storages.Storage
 }
 
+func NewFileManager(r registry.Registry, s storages.Storage) *FileManager {
+	return &FileManager{r, s}
+}
+
 func (f *FileManager) SaveFile(fileName string, content io.Reader) (string, error) {
 	token, err := registry.RecordFile(f.registry, fileName, registry.GenerateUniqueToken)
 	if err != nil {
