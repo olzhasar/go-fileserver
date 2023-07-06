@@ -21,10 +21,10 @@ const MSG_ERR_CANNOT_SEND_FILE = "Unable to send file"
 const MSG_ERR_MISSING_QUERY_PARAM = "Missing filename query param"
 
 type FileServer struct {
-	manager manager.FileManager
+	manager manager.SaverLoader
 }
 
-func NewFileServer(f manager.FileManager) *FileServer {
+func NewFileServer(f manager.SaverLoader) *FileServer {
 	return &FileServer{f}
 }
 
